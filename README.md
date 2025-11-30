@@ -1,100 +1,76 @@
-# Neural Network from Scratch with NumPy
+# 02456 Deep Learning Assignment 1
+### By Vignesh Sethuraman (s252755) and Sai Shashank Maktala (s253062)
 
-This project implements a configurable fully-connected feedforward neural network (FFNN) using only NumPy. The refactored codebase integrates lessons learned from the `DL-assignment-01` reference solution while keeping the implementation lightweight and easy to extend.
+This repository contains the implementation of a feedforward neural network from scratch using NumPy for the 02456 Deep Learning course at DTU.
 
-## Key Features
+## Project Structure
 
-- Modular `src/` package with clear separation of activations, models, optimizers, training utilities, and evaluation helpers
-- Support for multiple optimizers (SGD, Momentum, Nesterov, RMSprop, Adam, Nadam) and L2 regularisation
-- Flexible data-loading pipeline leveraging either Keras datasets or local downloads
-- Command line training script with optional Weights & Biases logging
-- Comprehensive experiment notebook under `notebooks/` showing end-to-end workflows on Fashion-MNIST and CIFAR-10
+- **activations.py** - Activation functions (ReLU, Tanh, Sigmoid) and their derivatives
+- **loss_functions.py** - Loss functions (cross-entropy, MSE) and L2 regularization
+- **optimizer.py** - Optimization algorithms (SGD, Momentum, Nesterov, RMSprop, Adam, Nadam)
+- **model.py** - Feedforward neural network implementation with forward/backward propagation
+- **data_loader.py** - Dataset loading and preprocessing utilities
+- **trainer.py** - Training loop and evaluation functions
+- **train.py** - Main training script with command-line interface
+- **metrics.py** - Accuracy and evaluation metrics
+- **report.tex** - Academic report documenting experiments and findings
 
 ## Installation
+
+Install required packages:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-If you plan to log runs, authenticate with WandB:
+## Running the Project
+
+Train a model with default settings:
 
 ```bash
-wandb login
+python train.py --dataset fashion_mnist --epochs 20 --optimizer adam --learning_rate 0.001
 ```
 
-## Project Structure
+### Command-line Arguments
 
-```
-Deep_Learning_project/
-├── configs/
-│   └── wandb_sweep.yaml      # WandB sweep configuration for hyperparameter search
-├── notebooks/
-│   └── main.ipynb            # Interactive experimentation notebook
-├── scripts/
-│   ├── train.py              # CLI entry-point for training and evaluation
-│   ├── quick_test.py         # Smoke test for rapid pipeline verification
-│   └── run_experiments.py    # Predefined experiment runner
-├── src/
-│   ├── __init__.py
-│   ├── activations.py        # Activation functions and derivatives
-│   ├── data/
-│   │   └── loaders.py        # Dataset loaders, batching, one-hot helpers
-│   ├── evaluation/
-│   │   └── metrics.py        # Accuracy, confusion matrix, classification report
-│   ├── models/
-│   │   └── feedforward.py    # Feedforward network implementation
-│   ├── optimizers.py         # Unified optimizer with multiple update rules
-│   └── training/
-│       └── trainer.py        # Training loop and evaluation helpers
-├── requirements.txt          # Project dependencies
-├── README.md                 # This document
-├── assignment.txt            # Project brief
-├── overview.txt              # Course overview
-└── synopsis.md               # Submitted project synopsis
-```
+- `--dataset, -d`: Dataset to use (fashion_mnist, mnist, cifar10)
+- `--epochs, -e`: Number of training epochs
+- `--batch_size, -b`: Batch size for training
+- `--optimizer, -o`: Optimizer (sgd, momentum, nesterov, rmsprop, adam, nadam)
+- `--learning_rate, -lr`: Learning rate
+- `--hidden_layers, -hl`: Hidden layer sizes (e.g., 256 128 64)
+- `--activation, -a`: Activation function (relu, tanh, sigmoid)
+- `--l2_coeff`: L2 regularization coefficient
+- `--wandb_mode`: Weights & Biases logging mode (online, offline, disabled)
 
-## Quick Start
-
-Train a model from the command line:
+### Example Commands
 
 ```bash
-python scripts/train.py \
-    --dataset fashion_mnist \
-    --hidden_layers 128 64 \
-    --epochs 10 \
-    --optimizer adam \
-    --learning_rate 0.001 \
-    --wandb_mode disabled
+# Train with Adam optimizer
+python train.py -d fashion_mnist -e 20 -o adam -lr 0.001 -hl 256 128 64
+
+# Train with different activation functions
+python train.py -d fashion_mnist -e 20 -a relu -wi he
+
+# Enable WandB tracking
+python train.py -d fashion_mnist -e 20 --wandb_mode online
 ```
 
-The script loads the dataset (via Keras by default), splits out a validation set, trains the network, and prints test metrics. Enable WandB logging with `--wandb_mode online` and optionally specify `--wandb_project` and `--wandb_entity`.
+## Key Results
 
-## Notebook Workflow
+- **Best Test Accuracy**: 88.69% on Fashion-MNIST
+- **Best Configuration**: Adam optimizer, [256, 128, 64] architecture, no L2 regularization
+- **Total Experiments**: 23 systematic runs tracked via Weights & Biases
 
-Open `notebooks/main.ipynb` for a step-by-step walkthrough covering:
+## Datasets
 
-- Dataset loading and preprocessing
-- Model/optimizer configuration
-- Training and validation curves
-- Hyperparameter experiments (optimizers, activations)
-- Evaluation with confusion matrices and classification reports
-
-## Utility Scripts & Sweeps
-
-- `scripts/quick_test.py` runs a two-epoch smoke test on a reduced dataset subset—useful after environment changes.
-- `scripts/run_experiments.py` batches common experiment configurations (optimizers, activations, architectures). Run `python scripts/run_experiments.py --list` to inspect available setups.
-- `configs/wandb_sweep.yaml` defines a WandB Bayesian sweep covering optimizers, activations, and regularisation strength. Launch with `wandb sweep configs/wandb_sweep.yaml`.
-
-## Notes
-
-- CIFAR-10 experiments are more computationally demanding; adjust hidden layer sizes, epochs, and batch size accordingly.
-
-## Contributors
-
-- Vignesh Sethuraman (`s252755@student.dtu.dk`)
-- Sai Shashank Maktala (`s253062@student.dtu.dk`)
+- **Fashion-MNIST**: 60k training, 10k test images (28×28 grayscale)
+- **CIFAR-10**: 50k training, 10k test images (32×32 RGB)
 
 ## Supervisor
 
-Viswanathan Sankar (viswa@dtu.dk)
+- **Viswanathan Sankar** (viswa@dtu.dk)
 
+## License
+
+This project is for academic purposes as part of the 02456 Deep Learning course at DTU.
