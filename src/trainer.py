@@ -7,9 +7,9 @@ from typing import Dict, Optional
 
 import numpy as np
 
-from data_loader import create_batches, one_hot_encode
-from metrics import accuracy
-from loss_functions import get_loss, l2_regularization
+from .data_loader import create_batches, one_hot_encode
+from .metrics import accuracy
+from .loss_functions import get_loss, l2_regularization
 
 try:  # Optional dependency for logging
     import wandb  # type: ignore

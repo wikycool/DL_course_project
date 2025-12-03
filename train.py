@@ -9,10 +9,10 @@ from typing import Sequence
 
 import numpy as np
 
-from data_loader import load_dataset, train_val_split
-from model import FeedForwardNN, NetworkConfig
-from optimizer import Optimizer, OptimizerConfig
-from trainer import TrainingConfig, evaluate_model, train_model
+from src.data_loader import load_dataset, train_val_split
+from src.model import FeedForwardNN, NetworkConfig
+from src.optimizer import Optimizer, OptimizerConfig
+from src.trainer import TrainingConfig, evaluate_model, train_model
 
 try:  # Optional dependency
     import wandb  # type: ignore

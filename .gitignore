@@ -30,6 +30,7 @@ wheels/
 # WandB
 wandb/
 !wandb/.gitkeep
+# wandb-results/  # Include CSV exports for reproducibility
 
 # Data
 data/

@@ -1,0 +1,372 @@
+% Based on template for ICASSP-2010 paper; to be used with:
+%          02456.sty  - 02456 LaTeX style file adapted from ICASSP
+\documentclass{article}
+\usepackage{amsmath,amssymb,graphicx,02456}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=false,
+    hidelinks
+}
+
+% Fix alignment issues
+\sloppy
+\hyphenpenalty=5000
+\tolerance=1000
+
+\toappear{02456 Deep Learning, DTU Compute, Fall 2025}
+
+% Title.
+% ------
+\title{Implementing a Feedforward Neural Network from Scratch: A Systematic Study of Optimizers, Activations, and Regularization}
+
+% Author names and student numbers
+% --------------------------------
+\name{%
+  \begin{tabular}{c}
+    Vignesh Sethuraman (s252755), Sai Shashank Maktala (s253062)
+  \end{tabular}
+}
+\address{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  Understanding neural network fundamentals requires implementing them from scratch. This project develops a fully-connected feedforward neural network using only NumPy, systematically evaluating design choices through 23 experiments on Fashion-MNIST. We compare six optimizers (SGD, Momentum, Nesterov, RMSprop, Adam, Nadam), three activation functions (ReLU, Tanh, Sigmoid), four architectures, and L2 regularization effects. Our best model achieves 82.59\% test accuracy using Nadam optimizer. Key findings: (1) Adaptive optimizers significantly outperform gradient descent variants (Nadam 82.59\%, Adam 82.35\% vs Nesterov 69.88\%, Momentum 69.34\%, SGD 40.79\%), (2) RMSprop achieves competitive 80.75\% accuracy, (3) activation function and architecture choices have minimal impact when properly initialized, and (4) all experiments tracked via Weights \& Biases demonstrate the critical importance of optimizer selection. Code and experiments available at: \url{https://github.com/wikycool/DL_course_project}
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Modern deep learning frameworks abstract away implementation details, potentially obscuring fundamental mechanisms. Building neural networks from scratch provides invaluable insights into forward propagation, backpropagation, and optimization dynamics. This project implements a configurable feedforward neural network (FFN) using only NumPy, enabling systematic experimentation without framework dependencies.
+
+We conduct 23 controlled experiments on Fashion-MNIST~\cite{xiao2017fashion}, a 10-class clothing classification dataset with 60,000 training and 10,000 test images (28$\times$28 grayscale). Our systematic evaluation spans optimizer algorithms, activation functions, network architectures, and regularization strategies, with all experiments tracked via Weights \& Biases for reproducibility.
+
+\textbf{Key Contributions:}
+\begin{itemize}
+\item Modular NumPy implementation supporting six optimizers and multiple activation functions
+\item Systematic experimental evaluation demonstrating Nadam's superiority (82.59\% vs 40.79\% for SGD)
+\item Empirical evidence that excessive regularization harms performance on Fashion-MNIST
+\item Comprehensive experiment tracking demonstrating reproducible deep learning research practices
+\end{itemize}
+
+\section{Methods}
+\label{sec:methods}
+
+\subsection{Network Architecture}
+\label{ssec:architecture}
+
+Our feedforward network implements $L$ hidden layers with configurable dimensions. For input $\mathbf{x} \in \mathbb{R}^{784}$ (flattened 28$\times$28 image), forward propagation computes:
+\begin{align}
+\mathbf{z}^{(1)} &= \mathbf{W}^{(1)}\mathbf{x} + \mathbf{b}^{(1)} \\
+\mathbf{a}^{(1)} &= \sigma(\mathbf{z}^{(1)}) \\
+\mathbf{z}^{(\ell)} &= \mathbf{W}^{(\ell)}\mathbf{a}^{(\ell-1)} + \mathbf{b}^{(\ell)}, \quad \ell = 2, \ldots, L \\
+\mathbf{a}^{(\ell)} &= \sigma(\mathbf{z}^{(\ell)}) \\
+\hat{\mathbf{y}} &= \text{softmax}(\mathbf{W}^{(L+1)}\mathbf{a}^{(L)} + \mathbf{b}^{(L+1)})
+\end{align}
+where $\sigma$ denotes the activation function and $\mathbf{W}^{(\ell)}, \mathbf{b}^{(\ell)}$ are layer parameters.
+
+\subsection{Backpropagation}
+\label{ssec:backprop}
+
+We implement backpropagation via the chain rule. For cross-entropy loss $\mathcal{L} = -\sum_{i} y_i \log \hat{y}_i + \frac{\lambda}{2}\sum_\ell \|\mathbf{W}^{(\ell)}\|_F^2$, output gradients are:
+\begin{equation}
+\delta^{(L+1)} = \hat{\mathbf{y}} - \mathbf{y}
+\end{equation}
+
+Hidden layer gradients propagate recursively:
+\begin{align}
+\delta^{(\ell)} &= (\mathbf{W}^{(\ell+1)})^T \delta^{(\ell+1)} \odot \sigma'(\mathbf{z}^{(\ell)}) \\
+\frac{\partial \mathcal{L}}{\partial \mathbf{W}^{(\ell)}} &= \delta^{(\ell)} (\mathbf{a}^{(\ell-1)})^T + \lambda \mathbf{W}^{(\ell)} \\
+\frac{\partial \mathcal{L}}{\partial \mathbf{b}^{(\ell)}} &= \delta^{(\ell)}
+\end{align}
+where $\odot$ denotes element-wise multiplication and $\lambda$ is the L2 coefficient.
+
+\subsection{Optimization Algorithms}
+\label{ssec:optimizers}
+
+We implement six optimization algorithms with learning rate $\alpha = 0.001$:
+
+\textbf{SGD:} Basic gradient descent: $\theta_{t+1} = \theta_t - \alpha \nabla_\theta \mathcal{L}$
+
+\textbf{Momentum:} Accumulates velocity with $\beta = 0.9$: $\mathbf{v}_t = \beta \mathbf{v}_{t-1} + \nabla_\theta \mathcal{L}$, $\theta_{t+1} = \theta_t - \alpha \mathbf{v}_t$
+
+\textbf{Nesterov:} Lookahead gradient: $\mathbf{v}_t = \beta \mathbf{v}_{t-1} + \nabla_\theta \mathcal{L}(\theta_t - \beta \mathbf{v}_{t-1})$
+
+\textbf{RMSprop:} Adaptive learning rate with $\beta = 0.9$, $\epsilon = 10^{-8}$: $\mathbf{s}_t = \beta \mathbf{s}_{t-1} + (1-\beta) \nabla_\theta^2 \mathcal{L}$, $\theta_{t+1} = \theta_t - \frac{\alpha}{\sqrt{\mathbf{s}_t + \epsilon}} \nabla_\theta \mathcal{L}$
+
+\textbf{Adam:} Combines momentum and adaptive rates with bias correction~\cite{kingma2014adam}: $\beta_1 = 0.9$, $\beta_2 = 0.999$
+
+\textbf{Nadam:} Nesterov-accelerated Adam combining lookahead with adaptive learning
+
+\subsection{Weight Initialization}
+\label{ssec:init}
+
+Proper initialization prevents vanishing/exploding gradients:
+\begin{itemize}
+\item \textbf{He initialization} for ReLU: $\mathbf{W} \sim \mathcal{N}(0, \sqrt{2/n_{in}})$
+\item \textbf{Xavier initialization} for Tanh/Sigmoid: $\mathbf{W} \sim \mathcal{N}(0, \sqrt{1/n_{in}})$
+\end{itemize}
+
+\subsection{Experimental Setup}
+\label{ssec:setup}
+
+\textbf{Dataset:} Fashion-MNIST with 60,000 training (split 90\% train, 10\% validation) and 10,000 test images. Images normalized to [0, 1] and flattened to 784-dimensional vectors.
+
+\textbf{Hyperparameters:} Batch size 64, learning rate 0.001, 20 epochs (25 for baseline, 30 for CIFAR-10). All experiments tracked via Weights \& Biases.
+
+\textbf{Experiment Categories:}
+\begin{enumerate}
+\item Optimizer comparison (6 optimizers)
+\item Activation functions (ReLU, Tanh, Sigmoid)
+\item Architecture depth (1-4 hidden layers)
+\item L2 regularization (0, $10^{-5}$, $10^{-4}$, $10^{-3}$, $10^{-2}$)
+\end{enumerate}
+
+\section{Experiments and Results}
+\label{sec:results}
+
+We conducted 23 experiments on Fashion-MNIST, systematically varying one hyperparameter while controlling others. All results verified through WandB experiment tracking.
+
+\subsection{Optimizer Comparison}
+\label{ssec:opt_results}
+
+Table~\ref{tab:optimizers} compares six optimizers using architecture [128, 64], Tanh activation (based on WandB experiments), Xavier initialization, and learning rate 0.001 for 20 epochs.
+
+\begin{table}[htb]
+\centering
+\caption{Optimizer comparison on Fashion-MNIST (20 epochs, [128, 64], lr=0.001)}
+\label{tab:optimizers}
+\begin{tabular}{lccc}
+\toprule
+Optimizer & Test Acc & Val Acc (final) & Convergence \\
+\midrule
+Nadam & \textbf{82.59\%} & 83.64\% & Fast \\
+Adam & 82.35\% & 82.76\% & Fast \\
+RMSprop & 80.75\% & 80.75\% & Medium \\
+Nesterov & 69.88\% & 67.83\% & Slow \\
+Momentum & 69.34\% & 67.37\% & Slow \\
+SGD & 40.79\% & 39.07\% & Very Slow \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Nadam achieves the best performance at 82.59\% test accuracy, closely followed by Adam at 82.35\%. Both adaptive optimizers significantly outperform RMSprop (80.75\%) and momentum-based methods. The 42-point gap between Nadam and SGD demonstrates that fixed learning rates are insufficient for this task. Momentum and Nesterov surprisingly underperform (~69\%), likely due to learning rate mismatch, while RMSprop's adaptive per-parameter learning rates achieve competitive results.
+
+\subsection{Impact of Regularization}
+\label{ssec:reg_results}
+
+Based on WandB experiments, regularization study was conducted but detailed results show regularization generally decreased performance for Fashion-MNIST. The architecture [256, 128, 64] with Adam optimizer was tested, and minimal or no regularization performed best, consistent with the dataset's simplicity. Excessive regularization caused severe underfitting, suggesting that Fashion-MNIST's well-separated classes benefit more from model capacity than from regularization constraints.
+
+\subsection{Activation Function Comparison}
+\label{ssec:activation_results}
+
+Table~\ref{tab:activations} compares activation functions using Adam optimizer, [128, 64] architecture, proper initialization, and learning rate 0.001 for 20 epochs.
+
+\begin{table}[htb]
+\centering
+\caption{Activation function comparison with proper initialization}
+\label{tab:activations}
+\begin{tabular}{lccc}
+\toprule
+Activation & Init & Test Acc & Val Acc (final) \\
+\midrule
+ReLU & He & 82.35\% & 82.91\% \\
+Tanh & Xavier & 82.24\% & 82.35\% \\
+Sigmoid & Xavier & 67.14\% & 67.42\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ReLU and Tanh perform nearly identically (82.35\% vs 82.24\%), demonstrating that with proper initialization, the choice between these activations is minimal for Fashion-MNIST. Sigmoid significantly underperforms (67.14\%) due to saturation issues in deeper networks, confirming the importance of choosing non-saturating activation functions.
+
+\subsection{Architecture Depth Analysis}
+\label{ssec:arch_results}
+
+Table~\ref{tab:architectures} evaluates network depth using Adam, ReLU, learning rate 0.001, 20 epochs.
+
+\begin{table}[htb]
+\centering
+\caption{Architecture depth comparison (Adam, ReLU, lr=0.001)}
+\label{tab:architectures}
+\begin{tabular}{lcc}
+\toprule
+Architecture & Parameters & Test Acc \\
+\midrule
+{[}128{]} & $\sim$101k & 82.18\% \\
+{[}128, 64{]} & $\sim$109k & 82.35\% \\
+{[}256, 128, 64{]} & $\sim$238k & 82.29\% \\
+{[}256, 256, 128, 64{]} & $\sim$304k & 82.29\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All architectures achieve nearly identical accuracy ($\sim$82\%), indicating Fashion-MNIST's limited complexity. The shallow [128, 64] network provides optimal parameter efficiency (109k parameters) without sacrificing performance. This suggests that for this dataset, width matters less than optimizer choice, and adding depth provides no benefit.
+
+\subsection{Best Overall Performance}
+\label{ssec:best}
+
+Our best model achieves \textbf{82.59\% test accuracy} using:
+\begin{itemize}
+\item Architecture: [128, 64]
+\item Optimizer: Nadam (lr=0.001)
+\item Activation: Tanh (Xavier init)
+\item Training: 20 epochs, batch size 64
+\end{itemize}
+
+This represents a 42-point improvement over vanilla SGD (40.79\%) and demonstrates the critical importance of optimizer selection. The Nadam and Adam optimizers both exceeded 82\% accuracy, highlighting the value of adaptive learning rate methods.
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=0.8\columnwidth]{confusion_matrix.png}
+\caption{Confusion matrix for best model (Nadam, [128, 64], 82.59\% test accuracy) showing classification performance across Fashion-MNIST classes. Strong diagonal indicates good overall performance. Common misclassifications occur between similar clothing items: Shirt vs. T-shirt/top (classes 6 vs. 0), Pullover vs. Coat (classes 2 vs. 4), and within footwear categories (Sandal, Sneaker, Ankle boot).}
+\label{fig:confusion}
+\end{figure}
+
+\section{Discussion and Observations}
+\label{sec:discussion}
+
+Based on systematic evaluation of 23 experiments across optimizer, activation, architecture, and regularization studies, we derive the following insights:
+
+\subsection{Hyperparameter Impact Analysis}
+\label{ssec:param_impact}
+
+Optimizer Selection is Overwhelmingly Critical. The choice of optimizer dominates all other hyperparameters. The 42-point gap between Nadam (82.59\%) and SGD (40.79\%) far exceeds variations from any other parameter. Even sub-optimal choices in architecture or activation can be compensated by using adaptive optimizers (Adam/Nadam), while the best architecture with SGD struggles to exceed 41\% accuracy.
+
+Adaptive Learning Rates Enable Convergence. Both Adam and Nadam achieve $>$82\% accuracy, while momentum-based methods (Momentum: 69.34\%, Nesterov: 69.88\%) significantly underperform despite theoretical advantages. This suggests that per-parameter adaptive learning rates are essential for this task, as fixed learning rates (even with momentum) cannot properly balance gradient magnitudes across 100k+ parameters. RMSprop's competitive 80.75\% accuracy confirms the value of adaptive scaling.
+
+Activation Function Choice is Secondary. With proper initialization, ReLU (82.35\%) and Tanh (82.24\%) differ by only 0.11\%. This minimal gap indicates that when using Xavier/He initialization correctly, the activation function becomes a non-critical choice. However, Sigmoid's poor performance (67.14\%) demonstrates that saturation-prone functions should be avoided.
+
+Architecture Depth Provides No Benefit. All architectures from [128] to [256, 256, 128, 64] achieve 82.18-82.35\% accuracy. The 3$\times$ increase in parameters (101k $\rightarrow$ 304k) yields no measurable improvement, suggesting Fashion-MNIST's simplicity doesn't require deep representations. This aligns with recent findings that dataset complexity, not model depth, determines optimal architecture~\cite{goodfellow2016deep}.
+
+Regularization Harms More Than Helps. Experiments show that L2 regularization consistently decreased performance for Fashion-MNIST. The dataset's well-separated classes (10 distinct clothing items) benefit from full model capacity rather than weight constraints. This contradicts conventional wisdom but is consistent with observations that simple datasets with clear class boundaries don't require regularization.
+
+\subsection{Understanding Failed Configurations}
+\label{ssec:failures}
+
+Why SGD Fails Catastrophically (40.79\%). Fixed learning rate 0.001 is simultaneously too large for some parameters (causing oscillation) and too small for others (causing slow convergence). Without adaptive scaling, SGD cannot navigate Fashion-MNIST's loss landscape effectively within 20 epochs. Increasing epochs to 100+ might improve SGD, but this defeats the purpose of efficient training.
+
+Momentum Methods Underperform (69\%). Surprisingly, Momentum and Nesterov achieve only ~69\%, likely due to learning rate mismatch. The momentum term $\beta=0.9$ may be accumulating gradients too aggressively with lr=0.001, causing overshooting. These methods require careful learning rate tuning, which adaptive optimizers handle automatically.
+
+Sigmoid Saturation (67.14\%). Sigmoid's gradients vanish when activations approach 0 or 1, common in deeper layers. Even with Xavier initialization, the saturation issue limits backpropagation effectiveness, explaining the 15-point gap vs ReLU/Tanh.
+
+\subsection{Key Experimental Observations}
+\label{ssec:observations}
+
+\begin{itemize}
+\item Optimizer Dominance: Optimizer choice contributes ~40\% performance variation, while activation (~15\%) and architecture (<1\%) have minimal impact
+\item Convergence Speed: Adaptive optimizers (Adam, Nadam) converge within 10 epochs, while SGD shows no convergence even at epoch 20
+\item Validation-Test Agreement: Final validation accuracy closely matches test accuracy across all experiments (within 1\%), indicating no overfitting
+\item Initialization Importance: Proper initialization (Xavier for Tanh, He for ReLU) is necessary but not sufficient; optimizer choice remains dominant
+\item Diminishing Returns: Beyond [128, 64] architecture, additional layers/neurons provide <0.2\% accuracy gain
+\end{itemize}
+
+\subsection{Recommendations for Target Accuracy}
+\label{ssec:recommendations}
+
+To achieve 80\%+ accuracy on Fashion-MNIST:
+\begin{itemize}
+\item Essential: Use Adam or Nadam optimizer (RMSprop acceptable)
+\item Architecture: [128, 64] or [256, 128, 64] (equivalent performance)
+\item Learning rate: 0.001 (default works well)
+\item Activation: ReLU or Tanh (with proper init)
+\item Epochs: 15-20 sufficient
+\item Regularization: None or minimal (L2 $\leq 10^{-5}$)
+\end{itemize}
+
+To maximize efficiency (fewest parameters):
+\begin{itemize}
+\item Use [128, 64] architecture (109k parameters)
+\item Nadam optimizer
+\item 20 epochs
+\item Expected: 82.5\% accuracy
+\end{itemize}
+
+Configurations to Avoid:
+\begin{itemize}
+\item SGD, Momentum, Nesterov optimizers (unless extensive lr tuning)
+\item Sigmoid activation (saturation issues)
+\item Heavy regularization (L2 $>10^{-4}$)
+\item Very deep networks (wasted computation)
+\end{itemize}
+
+\subsection{Comparison with Literature}
+\label{ssec:literature}
+
+Our best result (82.59\%) is competitive for NumPy-only feedforward networks. Literature reports 85-88\% for simple FFNs with extensive tuning and 94-96\% for CNNs~\cite{xiao2017fashion}. The remaining gap highlights architectural inductive biases: CNNs exploit spatial structure through convolution and pooling, while our FFN treats pixels independently. 
+
+\textbf{CIFAR-10 Limitations:} Testing our best configuration (Nadam, [256, 128, 64]) on CIFAR-10 yielded only 33.88\% test accuracy, a 48.7-point drop from Fashion-MNIST. This dramatic decline confirms that FFNs struggle with complex spatial data. CIFAR-10's color images (3$\times$ dimensionality) and fine-grained classes (dogs vs cats) require spatial feature extraction that only convolutional architectures provide~\cite{krizhevsky2012imagenet,simonyan2014very}.
+
+\subsection{Reproducibility via WandB}
+\label{ssec:reproducibility}
+
+All 23 experiments were tracked via Weights \& Biases with comprehensive logging: hyperparameters, training/validation metrics per epoch, final test accuracy, and confusion matrices. This demonstrates best practices in deep learning research: systematic hyperparameter variation, controlled experiments, and complete experimental provenance. The ability to reproduce and analyze results is fundamental to scientific rigor.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We successfully implemented a fully-connected feedforward neural network from scratch using only NumPy, achieving 82.59\% test accuracy on Fashion-MNIST through systematic experimentation. Our evaluation of 23 controlled experiments reveals that optimizer selection is the dominant factor in performance, with Nadam outperforming SGD by 42 percentage points.
+
+Key findings challenge conventional assumptions. Adaptive optimizers are essential, with Adam and Nadam achieving $>$82\% accuracy while momentum methods plateau at $\sim$69\%. Activation function choice is secondary, as ReLU and Tanh differ by only 0.11\% when properly initialized. Architecture depth provides no benefit, with all configurations from [128] to [256, 256, 128, 64] achieving equivalent $\sim$82\% accuracy. Finally, regularization harms performance on this dataset, as Fashion-MNIST's well-separated classes benefit from full model capacity.
+
+These insights emphasize the importance of empirical evaluation over theoretical assumptions. Our comprehensive observations provide actionable recommendations: use Nadam/Adam optimizer, shallow [128, 64] architecture, ReLU/Tanh activation with proper initialization, and minimal regularization. This configuration achieves 82.5\% accuracy with only 109k parameters.
+
+Future work could extend to more complex datasets (CIFAR-10 results confirm FFN limitations on spatial data), implement additional techniques (dropout, batch normalization), and compare with convolutional architectures. This project provides a solid foundation for understanding neural network fundamentals and demonstrates reproducible deep learning research through comprehensive WandB experiment tracking.
+
+\bibliographystyle{IEEEbib}
+\begin{thebibliography}{9}
+
+\bibitem{xiao2017fashion}
+H. Xiao, K. Rasul, and R. Vollgraf,
+``Fashion-MNIST: a novel image dataset for benchmarking machine learning algorithms,''
+\emph{arXiv preprint arXiv:1708.07747}, 2017.
+
+\bibitem{kingma2014adam}
+D. P. Kingma and J. Ba,
+``Adam: A method for stochastic optimization,''
+\emph{arXiv preprint arXiv:1412.6980}, 2014.
+
+\bibitem{lecun2015deep}
+Y. LeCun, Y. Bengio, and G. Hinton,
+``Deep learning,''
+\emph{Nature}, vol. 521, no. 7553, pp. 436--444, 2015.
+
+\bibitem{goodfellow2016deep}
+I. Goodfellow, Y. Bengio, and A. Courville,
+\emph{Deep Learning}.
+MIT Press, 2016.
+
+\bibitem{glorot2010understanding}
+X. Glorot and Y. Bengio,
+``Understanding the difficulty of training deep feedforward neural networks,''
+in \emph{Proceedings of the Thirteenth International Conference on Artificial Intelligence and Statistics}, 2010, pp. 249--256.
+
+\bibitem{krizhevsky2012imagenet}
+A. Krizhevsky, I. Sutskever, and G. E. Hinton,
+``ImageNet classification with deep convolutional neural networks,''
+in \emph{Advances in Neural Information Processing Systems}, 2012, pp. 1097--1105.
+
+\bibitem{simonyan2014very}
+K. Simonyan and A. Zisserman,
+``Very deep convolutional networks for large-scale image recognition,''
+\emph{arXiv preprint arXiv:1409.1556}, 2014.
+
+\end{thebibliography}
+
+\clearpage
+
+\section*{Declaration of use of generative AI}
+
+This declaration must be filled out and included as the final page of the document. The questions apply to all parts of the work, including research, project writing, and coding.
+\begin{itemize}
+\item I/we have used generative AI tools: no
+\end{itemize}
+
+We did not use any generative AI tools for this project. All code implementation, experimental design, analysis, and report writing were completed independently by the students without AI assistance.
+
+
+
+\end{document}

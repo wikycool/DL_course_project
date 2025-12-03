@@ -7,13 +7,13 @@ from typing import List, Sequence, Tuple
 
 import numpy as np
 
-from activations import (
+from .activations import (
     get_activation,
     get_activation_derivative,
     get_activation_pair,
     softmax,
 )
-from loss_functions import get_loss, l2_regularization_gradients
+from .loss_functions import get_loss, l2_regularization_gradients
 
 
 ArrayLike = np.ndarray
