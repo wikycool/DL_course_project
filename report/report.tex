@@ -240,7 +240,7 @@ Adaptive Learning Rates Enable Convergence. Both Adam and Nadam achieve $>$82\% 
 
 Activation Function Choice is Secondary. With proper initialization, ReLU (82.35\%) and Tanh (82.24\%) differ by only 0.11\%. This minimal gap indicates that when using Xavier/He initialization correctly, the activation function becomes a non-critical choice. However, Sigmoid's poor performance (67.14\%) demonstrates that saturation-prone functions should be avoided.
 
-Architecture Depth Provides No Benefit. All architectures from [128] to [256, 256, 128, 64] achieve 82.18-82.35\% accuracy. The 3$\times$ increase in parameters (101k $\rightarrow$ 304k) yields no measurable improvement, suggesting Fashion-MNIST's simplicity doesn't require deep representations. This aligns with recent findings that dataset complexity, not model depth, determines optimal architecture~\cite{goodfellow2016deep}.
+Architecture Depth Provides No Benefit. All architectures from [128] to [256, 256, 128, 64] achieve 82.18-82.35\% accuracy. The 3$\times$ increase in parameters (101k $\rightarrow$ 304k) yields no measurable improvement, suggesting Fashion-MNIST's simplicity doesn't require deep representations. This aligns with recent findings that dataset complexity, not model depth, determines the optimal architecture~\cite{goodfellow2016deep}.
 
 Regularization Harms More Than Helps. Experiments show that L2 regularization consistently decreased performance for Fashion-MNIST. The dataset's well-separated classes (10 distinct clothing items) benefit from full model capacity rather than weight constraints. This contradicts conventional wisdom but is consistent with observations that simple datasets with clear class boundaries don't require regularization.
 
@@ -316,7 +316,7 @@ These insights emphasize the importance of empirical evaluation over theoretical
 
 Future work could extend to more complex datasets (CIFAR-10 results confirm FFN limitations on spatial data), implement additional techniques (dropout, batch normalization), and compare with convolutional architectures. This project provides a solid foundation for understanding neural network fundamentals and demonstrates reproducible deep learning research through comprehensive WandB experiment tracking.
 
-\bibliographystyle{IEEEbib}
+
 \begin{thebibliography}{9}
 
 \bibitem{xiao2017fashion}
