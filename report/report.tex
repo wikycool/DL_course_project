@@ -257,11 +257,11 @@ Sigmoid Saturation (67.14\%). Sigmoid's gradients vanish when activations approa
 \label{ssec:observations}
 
 \begin{itemize}
-\item Optimizer Dominance: Optimizer choice contributes ~40\% performance variation, while activation (~15\%) and architecture (<1\%) have minimal impact
+\item Optimizer Dominance: Optimizer choice contributes ~40\% performance variation, while activation (~15\%) and architecture ($<1\%$) have minimal impact
 \item Convergence Speed: Adaptive optimizers (Adam, Nadam) converge within 10 epochs, while SGD shows no convergence even at epoch 20
 \item Validation-Test Agreement: Final validation accuracy closely matches test accuracy across all experiments (within 1\%), indicating no overfitting
 \item Initialization Importance: Proper initialization (Xavier for Tanh, He for ReLU) is necessary but not sufficient; optimizer choice remains dominant
-\item Diminishing Returns: Beyond [128, 64] architecture, additional layers/neurons provide <0.2\% accuracy gain
+\item Diminishing Returns: Beyond [128, 64] architecture, additional layers/neurons provide $<0.2\%$ accuracy gain
 \end{itemize}
 
 \subsection{Recommendations for Target Accuracy}
